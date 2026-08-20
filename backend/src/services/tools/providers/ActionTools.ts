@@ -76,12 +76,29 @@ export class OpenApplicationTool implements ITool {
       let command = '';
       if (process.platform === 'win32') {
         let app = args.appName.toLowerCase();
-        if (app === 'telegram') app = 'tg://';
-        if (app === 'spotify') app = 'spotify:';
-        if (app === 'whatsapp') app = 'whatsapp://';
-        if (app === 'mail') app = 'mailto:';
-        if (app === 'settings') app = 'ms-settings:';
-        command = `start "" "${app}"`;
+        
+        // Load custom aliases
+        try {
+           const fs = require('fs');
+           const path = require('path');
+           const os = require('os');
+           const aliasPath = path.join(os.homedir(), '.arvon_shortcuts.json');
+           if (fs.existsSync(aliasPath)) {
+               const aliases = JSON.parse(fs.readFileSync(aliasPath, 'utf8'));
+               if (aliases[app]) {
+                   command = aliases[app]; // Full custom command
+               }
+           }
+        } catch(e){}
+
+        if (!command) {
+            if (app === 'telegram') app = 'tg://';
+            if (app === 'spotify') app = 'spotify:';
+            if (app === 'whatsapp') app = 'whatsapp://';
+            if (app === 'mail') app = 'mailto:';
+            if (app === 'settings') app = 'ms-settings:';
+            command = `start "" "${app}"`;
+        }
       } else if (process.platform === 'darwin') {
         command = `open -a "${args.appName}"`;
       } else {
@@ -171,6 +188,54 @@ export class RunCommandTool implements ITool {
             stderr: fullStderr,
             error: code !== 0 ? `Exited with code ${code}` : null
           });
+      });
+    });
+  }
+}
+
+export class ReadClipboardTool implements ITool {
+  name = 'ReadClipboardTool';
+  description = 'Reads the current text contents of the system clipboard. Use this when the user says "what is this?" or "fix what I just copied".';
+  permissionTier: 1 | 2 | 3 = 1;
+  inputSchema = { properties: {} };
+
+  async execute() {
+    return new Promise((resolve) => {
+      let command = 'powershell.exe -Command Get-Clipboard';
+      if (process.platform === 'darwin') command = 'pbpaste';
+      if (process.platform === 'linux') command = 'xclip -selection clipboard -o';
+
+      exec(command, (error, stdout) => {
+        if (error) {
+          resolve({ success: false, error: 'Could not read clipboard' });
+        } else {
+          resolve({ success: true, clipboardContent: stdout.trim() });
+        }
+      });
+    });
+  }
+}
+
+export class GitContextTool implements ITool {
+  name = 'GitContextTool';
+  description = 'Reads the current git branch, status, and diff to answer questions about the workspace state without needing code pasted in.';
+  permissionTier: 1 | 2 | 3 = 1;
+  inputSchema = {
+    type: 'object',
+    properties: {
+        cwd: { type: 'string', description: 'The repository directory to check. Must be absolute path.' }
+    },
+    required: ['cwd']
+  };
+
+  async execute(args: { cwd: string }) {
+    return new Promise((resolve) => {
+      exec('git status -s && echo "---" && git diff', { cwd: args.cwd }, (error, stdout, stderr) => {
+         if (error) {
+             resolve({ success: false, error: stderr || error.message });
+         } else {
+             resolve({ success: true, gitContext: stdout.trim() });
+         }
       });
     });
   }

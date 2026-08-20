@@ -51,6 +51,43 @@ export class ReadFSTool implements ITool {
   }
 }
 
+export interface UndoAction {
+    description: string;
+    undo: () => Promise<void>;
+}
+
+export class UndoManager {
+    static log: UndoAction[] = [];
+    static push(action: UndoAction) {
+       this.log.push(action);
+       if(this.log.length > 50) this.log.shift();
+    }
+    static async pop() {
+        const last = this.log.pop();
+        if(last) {
+            await last.undo();
+            return last.description;
+        }
+        return null;
+    }
+}
+
+export class UndoTool implements ITool {
+  name = 'UndoTool';
+  description = 'Reverts the most recent file system change (create, write, delete) made by ARVON.';
+  permissionTier: 1 = 1;
+  inputSchema = { properties: {} };
+
+  async execute(args: any, config: ToolConfig) {
+      const description = await UndoManager.pop();
+      if (description) {
+          return { success: true, message: `Successfully reverted action. Reverse executed: ${description}` };
+      } else {
+          return { success: false, error: 'No recent actions found in the undo log to revert.' };
+      }
+  }
+}
+
 export class WriteWorkspaceTool implements ITool {
   name = 'WriteWorkspaceTool';
   description = 'Creates or modifies files inside the ARVON workspace. Modifies outside workspace will trigger Tier 3 confirmation.';
@@ -62,10 +99,6 @@ export class WriteWorkspaceTool implements ITool {
       throw new Error(`Path ${args.path} is highly restricted.`);
     }
     
-    // Dynamic tier escalation handled by ToolEngine based on path check in orchestrator?
-    // Actually, ToolRegistry relies on the static `permissionTier` property.
-    // If we want dynamic escalation, we can throw a special error or we just set this tool to Tier 3 if we want to be safe.
-    // But the requirements state Tier 2 is for workspace. Let's make this tool strictly for workspace.
     if (!isWorkspacePath(args.path, config.workspacePath)) {
         throw new Error(`WriteWorkspaceTool can only write to the ARVON workspace. Use ModifySystemTool for outside writes.`);
     }
@@ -73,6 +106,20 @@ export class WriteWorkspaceTool implements ITool {
     const dir = path.dirname(args.path);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     
+    const fileExists = fs.existsSync(args.path);
+    let previousContent = '';
+    if (fileExists) {
+        previousContent = fs.readFileSync(args.path, 'utf8');
+    }
+
+    UndoManager.push({
+        description: fileExists ? `Restore previous content of ${args.path}` : `Delete newly created file ${args.path}`,
+        undo: async () => {
+            if (fileExists) fs.writeFileSync(args.path, previousContent);
+            else fs.unlinkSync(args.path);
+        }
+    });
+
     fs.writeFileSync(args.path, args.content);
     return { success: true, message: `Wrote to ${args.path}` };
   }
@@ -95,23 +142,49 @@ export class ModifySystemTool implements ITool {
     const trash = new TrashManager(config.workspacePath);
 
     if (args.action === 'delete') {
-       trash.moveToTrash(args.targetPath);
+       const backupPath = trash.moveToTrash(args.targetPath);
+       if (backupPath) {
+           UndoManager.push({
+               description: `Restore deleted file ${args.targetPath} from trash`,
+               undo: async () => { fs.copyFileSync(backupPath, args.targetPath); }
+           });
+       }
        return { success: true, message: `Moved ${args.targetPath} to trash.` };
     } 
     else if (args.action === 'move' && args.destinationPath) {
        fs.renameSync(args.targetPath, args.destinationPath);
+       const target = args.targetPath;
+       const dest = args.destinationPath;
+       UndoManager.push({
+           description: `Move ${dest} back to ${target}`,
+           undo: async () => { fs.renameSync(dest, target); }
+       });
        return { success: true, message: `Moved to ${args.destinationPath}` };
     }
     else if (args.action === 'write' && args.content !== undefined) {
-       if (fs.existsSync(args.targetPath)) {
-           // Backup existing to trash before overwrite
-           const backupPath = path.join(path.dirname(args.targetPath), path.basename(args.targetPath) + '.bak');
-           fs.copyFileSync(args.targetPath, backupPath);
-           trash.moveToTrash(backupPath);
+       const fileExists = fs.existsSync(args.targetPath);
+       let backupPath: string | null = null;
+       if (fileExists) {
+           const tempBackupPath = path.join(path.dirname(args.targetPath), path.basename(args.targetPath) + '.bak');
+           fs.copyFileSync(args.targetPath, tempBackupPath);
+           backupPath = trash.moveToTrash(tempBackupPath);
        } else {
            const dir = path.dirname(args.targetPath);
            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
        }
+       
+       const target = args.targetPath;
+       UndoManager.push({
+           description: fileExists ? `Restore ${target} from trash backup` : `Delete newly created ${target}`,
+           undo: async () => {
+               if (fileExists && backupPath) {
+                   fs.copyFileSync(backupPath, target);
+               } else if (!fileExists) {
+                   fs.unlinkSync(target);
+               }
+           }
+       });
+
        fs.writeFileSync(args.targetPath, args.content);
        return { success: true, message: `Wrote to ${args.targetPath}` };
     }

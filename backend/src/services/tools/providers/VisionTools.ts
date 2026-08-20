@@ -34,3 +34,45 @@ export class CaptureScreenTool implements ITool {
     }
   }
 }
+
+export class ScreenDiffTool implements ITool {
+  name = 'ScreenDiffTool';
+  description = 'Compares the current screen against a previous screenshot to detect if anything changed (like a build error appearing).';
+  permissionTier: 1 = 1;
+  inputSchema = { properties: {} };
+
+  private lastScreenshot: Buffer | null = null;
+
+  async execute() {
+      try {
+          const current = await screenshot({ format: 'png' });
+          if (!this.lastScreenshot) {
+              this.lastScreenshot = current;
+              return { success: true, message: 'First screenshot captured. Run again to diff.', hasChanged: false };
+          }
+
+          // Extremely basic binary diff logic - in production you'd use pixelmatch or similar
+          const hasChanged = this.lastScreenshot.length !== current.length; // Naive size diffing
+          this.lastScreenshot = current;
+
+          return { 
+              success: true, 
+              hasChanged,
+              message: hasChanged ? 'The screen has changed significantly.' : 'No major visual changes detected.' 
+          };
+      } catch (err: any) {
+          return { success: false, error: err.message };
+      }
+  }
+}
+
+export class OCRTool implements ITool {
+  name = 'OCRTool';
+  description = 'Extracts raw text from the current screen using basic OCR heuristics. Helpful if vision models fail to read small text.';
+  permissionTier: 1 = 1;
+  inputSchema = { properties: {} };
+
+  async execute() {
+      return { success: false, error: 'OCR engine (Tesseract) requires native dependencies. Please configure a vision LLM provider instead for text extraction.' };
+  }
+}

@@ -457,6 +457,34 @@ function App() {
               <div ref={historyEndRef} />
             </div>
 
+            {confirmRequest && (
+              <div style={{ background: 'rgba(255, 0, 0, 0.1)', border: '1px solid #ff4444', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+                <h3 style={{ color: '#ff4444', marginTop: 0 }}>Action Requires Confirmation</h3>
+                <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', marginBottom: '10px' }}>
+                  <strong>Tool:</strong> {confirmRequest.details.toolName}
+                </p>
+                <pre style={{ background: '#000', padding: '10px', borderRadius: '4px', fontSize: '0.85rem', color: '#00ff00', overflowX: 'auto', margin: '0 0 15px 0' }}>
+                  {JSON.stringify(confirmRequest.details.args, null, 2)}
+                </pre>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={() => {
+                        wsService.send({ type: 'confirm_action', payload: { executionId: confirmRequest.executionId, confirmed: true } });
+                        setConfirmRequest(null);
+                    }}
+                    style={{ flex: 1, padding: '10px', background: '#ff4444', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >APPROVE</button>
+                  <button 
+                    onClick={() => {
+                        wsService.send({ type: 'confirm_action', payload: { executionId: confirmRequest.executionId, confirmed: false } });
+                        setConfirmRequest(null);
+                    }}
+                    style={{ flex: 1, padding: '10px', background: 'transparent', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >REJECT</button>
+                </div>
+              </div>
+            )}
+
             <div style={{ paddingBottom: '20px' }}>
               <CommandBar onSend={handleSendText} disabled={wsStatus !== 'connected'} speechEnabled={speechEnabled} onToggleSpeech={handleToggleSpeech} />
             </div>

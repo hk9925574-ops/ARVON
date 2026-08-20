@@ -21,9 +21,10 @@ import { Orchestrator } from './services/intelligence/Orchestrator';
 import { MemoryEngine } from './services/memory/MemoryEngine';
 import { ToolRegistry, ToolConfig } from './services/tools/ToolRegistry';
 import { SystemInfoTool, TimeTool } from './services/tools/providers/SafeTools';
-import { CalculatorTool, OpenApplicationTool, OpenWebsiteTool, RunCommandTool } from './services/tools/providers/ActionTools';
-import { ReadFSTool, WriteWorkspaceTool, ModifySystemTool } from './services/tools/providers/FSTools';
-import { CaptureScreenTool } from './services/tools/providers/VisionTools';
+import { CalculatorTool, OpenApplicationTool, OpenWebsiteTool, RunCommandTool, GitContextTool, ReadClipboardTool } from './services/tools/providers/ActionTools';
+
+import { ReadFSTool, WriteWorkspaceTool, ModifySystemTool, UndoTool } from './services/tools/providers/FSTools';
+import { CaptureScreenTool, ScreenDiffTool, OCRTool } from './services/tools/providers/VisionTools';
 import { NavigateBrowserTool, ReadPageTool, CloseBrowserTool } from './services/tools/providers/BrowserTools';
 import { SaveMemoryTool, SearchMemoryTool, IngestKnowledgeBaseTool } from './services/tools/providers/MemoryTools';
 import { SpawnResearchAgentTool, SpawnCoderAgentTool, EndAgentTaskTool } from './services/tools/providers/AgentTools';
@@ -130,7 +131,12 @@ toolRegistry.register(new RunCommandTool((chunk, command) => {
 toolRegistry.register(new ReadFSTool());
 toolRegistry.register(new WriteWorkspaceTool());
 toolRegistry.register(new ModifySystemTool());
+toolRegistry.register(new UndoTool());
 toolRegistry.register(new CaptureScreenTool());
+toolRegistry.register(new ScreenDiffTool());
+toolRegistry.register(new OCRTool());
+toolRegistry.register(new GitContextTool());
+toolRegistry.register(new ReadClipboardTool());
 
 // Register Browser Tools
 toolRegistry.register(new NavigateBrowserTool());
