@@ -63,51 +63,84 @@ export class WebKnowledgeProvider implements IKnowledgeProvider {
         }
     }
 
-    try {
-      const apiKey = process.env.TAVILY_API_KEY;
-      if (!apiKey) {
-          console.warn('[WebKnowledge] TAVILY_API_KEY missing. Cannot perform live web search.');
-          return [];
-      }
+    const tavilyKey = process.env.TAVILY_API_KEY;
 
-      const response = await fetch('https://api.tavily.com/search', {
+    if (tavilyKey) {
+      try {
+        const response = await fetch('https://api.tavily.com/search', {
           method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-              api_key: apiKey,
-              query: optimizedQuery,
-              search_depth: 'basic',
-              include_answer: true,
-              max_results: 3
+            api_key: tavilyKey,
+            query: optimizedQuery,
+            search_depth: 'basic',
+            include_answer: true,
+            max_results: 5,
+            days: 30
           })
-      });
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          const raw: SearchResult[] = (json.results || []).map((r: any) => ({
+            title: r.title,
+            url: r.url,
+            snippet: r.content,
+            publishedAt: r.published_date,
+            retrievedAt: Date.now()
+          }));
+
+          const ranked = this.sourceRanker.rank(raw);
+
+          const topResults: KnowledgeResult[] = ranked.slice(0, 3).map(r => ({
+            source: KnowledgeSource.WEB,
+            content: `[LIVE_WEB_SOURCE] ${r.title}${r.publishedAt ? ` (published ${r.publishedAt})` : ''}\n${r.snippet}\nSource: ${r.url}`,
+            confidence: 0.95,
+            retrievedAt: Date.now()
+          }));
+
+          if (json.answer) {
+            topResults.unshift({
+              source: KnowledgeSource.WEB,
+              content: `[LIVE_WEB_SOURCE] Direct answer (retrieved ${new Date().toISOString()}): ${json.answer}`,
+              confidence: 0.98,
+              retrievedAt: Date.now()
+            });
+          }
+
+          this.cache.set(optimizedQuery, { results: topResults, timestamp: Date.now() });
+          return topResults;
+        }
+        console.error('[ARVON][WebKnowledge] Tavily request failed, falling back to Wikipedia');
+      } catch (e) {
+        console.error('[ARVON][WebKnowledge] Tavily error, falling back to Wikipedia:', e);
+      }
+    }
+
+    try {
+      const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(optimizedQuery)}&utf8=&format=json`;
+      const response = await fetch(url);
 
       if (!response.ok) return [];
       const json = await response.json();
 
-      const topResults: KnowledgeResult[] = [];
-      
-      if (json.answer) {
-          topResults.push({
-              source: KnowledgeSource.WEB,
-              content: `[LIVE_WEB_SOURCE] AI Web Summary:\n${json.answer}`,
-              confidence: 0.95,
-              retrievedAt: Date.now()
-          });
-      }
+      if (!json.query || !json.query.search) return [];
 
-      if (json.results && Array.isArray(json.results)) {
-          json.results.forEach((r: any) => {
-              topResults.push({
-                  source: KnowledgeSource.WEB,
-                  content: `[LIVE_WEB_SOURCE] ${r.title}\n${r.content}\nSource: ${r.url}`,
-                  confidence: 0.9,
-                  retrievedAt: Date.now()
-              });
-          });
-      }
+      const raw: SearchResult[] = json.query.search.slice(0, 5).map((r: any) => ({
+        title: r.title,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(r.title)}`,
+        snippet: r.snippet.replace(/<[^>]*>?/gm, '').trim(),
+        retrievedAt: Date.now()
+      }));
+
+      const ranked = this.sourceRanker.rank(raw);
+
+      const topResults: KnowledgeResult[] = ranked.slice(0, 3).map(r => ({
+        source: KnowledgeSource.WEB,
+        content: `[LIVE_WEB_SOURCE - WIKIPEDIA, MAY NOT BE FULLY CURRENT] ${r.title}\n${r.snippet}\nSource: ${r.url}`,
+        confidence: 0.6,
+        retrievedAt: Date.now()
+      }));
 
       this.cache.set(optimizedQuery, { results: topResults, timestamp: Date.now() });
       return topResults;

@@ -61,6 +61,14 @@ export class ReasoningEngine {
         plan.steps.push({ stepName: 'Synthesize', description: 'Form a conclusive summary or recommendation', status: 'PENDING' });
         plan.constraints.push('Remain objective', 'Clearly distinguish fact from opinion');
         break;
+
+      case Intent.QUESTION:
+      case Intent.WEB_SEARCH:
+        plan.steps.push({ stepName: 'CheckFreshness', description: 'Check if any [LIVE_WEB_SOURCE] context is present. If so, identify its date and treat it as more current than internal knowledge', status: 'PENDING' });
+        plan.steps.push({ stepName: 'ResolveConflicts', description: 'If [LIVE_WEB_SOURCE] and [INTERNAL_KNOWLEDGE] disagree, or a source gives a date range that has since ended, favor the most recently dated fact', status: 'PENDING' });
+        plan.steps.push({ stepName: 'Answer', description: 'State the answer directly, without restating the internal check process', status: 'PENDING' });
+        plan.constraints.push('Never state an outdated fact as current just because it feels more familiar');
+        break;
         
       default:
         // Simple tasks don't need a heavy plan
