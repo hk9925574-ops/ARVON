@@ -1,0 +1,124 @@
+.core-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+/* Ambient Field */
+.core-field {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--core-idle) 0%, transparent 60%);
+  filter: blur(20px);
+  opacity: 0.5;
+  transition: all var(--duration-ambient) var(--ease-smooth);
+}
+
+.core-field.state-active { background: radial-gradient(circle, var(--core-active) 0%, transparent 70%); opacity: 0.8; }
+.core-field.state-analyzing { background: radial-gradient(circle, var(--core-analyzing) 0%, transparent 70%); opacity: 0.9; }
+.core-field.state-tool { background: radial-gradient(circle, var(--core-tool) 0%, transparent 70%); opacity: 0.9; }
+.core-field.state-responding { background: radial-gradient(circle, var(--core-responding) 0%, transparent 70%); opacity: 1; }
+
+/* Nucleus */
+.core-nucleus {
+  position: relative;
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.2);
+  transition: all var(--duration-ui) var(--ease-snappy);
+  animation: breathe-idle 4s infinite ease-in-out;
+  z-index: 2;
+}
+
+.core-nucleus.state-active { transform: scale(1.2); animation: none; }
+.core-nucleus.state-analyzing { transform: scale(1.1); animation: pulse-fast 1s infinite; box-shadow: 0 0 40px var(--core-analyzing); }
+.core-nucleus.state-tool { transform: scale(0.9); animation: pulse-tool 2s infinite; box-shadow: 0 0 40px var(--core-tool); }
+.core-nucleus.state-responding { transform: scale(1.15); animation: throb 0.5s infinite alternate; }
+
+.core-nucleus.speaking-pulse {
+  animation: speakingPulse 0.3s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate !important;
+}
+
+@keyframes speakingPulse {
+  from { transform: scale(1.1); box-shadow: 0 0 40px rgba(255, 255, 255, 0.6); }
+  to { transform: scale(1.3); box-shadow: 0 0 70px rgba(255, 255, 255, 1); }
+}
+
+/* Rings */
+.core-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.ring-1 {
+  width: 70%;
+  height: 70%;
+  border-top: 2px solid rgba(255, 255, 255, 0.6);
+  animation: spin-slow 10s linear infinite;
+  transition: all var(--duration-ui) var(--ease-smooth);
+}
+
+.ring-2 {
+  width: 90%;
+  height: 90%;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  animation: spin-reverse 15s linear infinite;
+  transition: all var(--duration-ui) var(--ease-smooth);
+}
+
+.ring-1.state-analyzing, .ring-2.state-analyzing { border-color: var(--core-analyzing); animation-duration: 2s; }
+.ring-1.state-tool, .ring-2.state-tool { border-color: var(--core-tool); animation-duration: 4s; border-style: dashed; }
+.ring-1.state-responding, .ring-2.state-responding { animation-duration: 1s; opacity: 0.8; }
+
+/* Details Text */
+.core-details {
+  position: absolute;
+  bottom: -40px;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all var(--duration-ui) var(--ease-snappy);
+}
+
+.core-details.state-analyzing,
+.core-details.state-tool,
+.core-details.state-responding {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Keyframes */
+@keyframes breathe-idle {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 255, 255, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.6); }
+}
+
+@keyframes pulse-fast {
+  0%, 100% { transform: scale(1.1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes pulse-tool {
+  0%, 100% { transform: scale(0.9); border-radius: 40%; }
+  50% { transform: scale(1); border-radius: 50%; }
+}
+
+@keyframes throb {
+  from { transform: scale(1.15); box-shadow: 0 0 30px rgba(255, 255, 255, 0.8); }
+  to { transform: scale(1.25); box-shadow: 0 0 50px rgba(255, 255, 255, 1); }
+}
+
+@keyframes spin-slow { 100% { transform: rotate(360deg); } }
+@keyframes spin-reverse { 100% { transform: rotate(-360deg); } }

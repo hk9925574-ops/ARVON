@@ -1,0 +1,70 @@
+/* ARVON 3.0 Motion & Premium Tokens */
+
+:root {
+  /* Premium Dark Theme */
+  --bg-dark: #0a0a0c;
+  --bg-surface: rgba(20, 20, 25, 0.7);
+  --bg-surface-hover: rgba(30, 30, 35, 0.8);
+  --bg-panel: rgba(15, 15, 18, 0.85);
+  
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-highlight: rgba(255, 255, 255, 0.15);
+  
+  --text-main: #f0f0f2;
+  --text-dim: #8a8a93;
+  --text-primary-glow: #ffffff;
+
+  /* ARVON Brand Colors */
+  --core-idle: rgba(150, 150, 255, 0.4);
+  --core-active: rgba(100, 150, 255, 0.8);
+  --core-analyzing: rgba(200, 100, 255, 0.8);
+  --core-tool: rgba(100, 255, 200, 0.8);
+  --core-responding: rgba(255, 255, 255, 0.9);
+
+  --duration-micro: 200ms;
+  --duration-ui: 300ms;
+  --duration-ambient: 5s;
+  
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-linear: linear;
+}
+
+/* Reduced Motion Settings */
+[data-animation="low"] {
+  --duration-micro: 0ms;
+  --duration-ui: 0ms;
+  --duration-ambient: 20s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-ambient: 10000ms;
+  }
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Base Glass Utilities */
+.arvon-glass {
+  background: var(--bg-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.arvon-glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}

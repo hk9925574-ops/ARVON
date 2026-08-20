@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/services/ai/aiprovider.ts","./src/services/ai/localaiprovider.ts","./src/services/conversation/conversationmanager.ts","./src/services/intent/intentrouter.ts","./src/services/memory/memorymanager.ts","./src/services/voice/pipertts.ts","../shared/types/index.ts"],"errors":true,"version":"5.9.3"}

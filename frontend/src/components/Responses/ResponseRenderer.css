@@ -1,0 +1,84 @@
+.response-text p {
+  margin-bottom: 12px;
+  line-height: 1.6;
+  font-size: 1.05rem;
+  color: var(--text-main);
+}
+
+.response-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.card-body {
+  padding: 16px;
+}
+
+.card-body pre {
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+
+/* Code Block Specifics */
+.code-block {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-header {
+  background: #1e1e24;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.code-header button {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.code-header button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.code-block pre {
+  background: #0d0d12;
+  padding: 16px;
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+  overflow-x: auto;
+}
+
+.error-card {
+  border-color: rgba(255, 100, 100, 0.3);
+}
+
+.error-card .card-header {
+  background: rgba(255, 100, 100, 0.1);
+  color: #ff6b6b;
+}

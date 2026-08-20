@@ -1,0 +1,48 @@
+{
+  "name": "arvon",
+  "version": "1.0.0",
+  "description": "ARVON Desktop AI Assistant",
+  "main": "electron/dist/main.js",
+  "scripts": {
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npx tsc -b",
+    "build:electron": "npx tsc -p electron/tsconfig.json",
+    "build:all": "npm run build:frontend && npm run build:backend && npm run build:electron",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:electron": "npm run build:electron && electron .",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "make": "npm run build:all && electron-builder"
+  },
+  "build": {
+    "appId": "com.arvon.desktop",
+    "productName": "ARVON",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/dist/**/*",
+      "frontend/dist/**/*",
+      "backend/dist/**/*",
+      "backend/package.json",
+      "backend/node_modules/**/*",
+      "backend/piper_tts/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.5.4",
+    "wait-on": "^7.2.0"
+  }
+}
