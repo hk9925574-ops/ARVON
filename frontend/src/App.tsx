@@ -18,6 +18,8 @@ function App() {
   const [coreDetails, setCoreDetails] = useState('');
   const [history, setHistory] = useState<{role: 'user'|'arvon'|'system', text: string, format?: string, metadata?: any, isStreaming?: boolean}[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [theme, setTheme] = useState<'DARK'|'LIGHT'|'WHISPER'>('DARK');
   const [animationLevel, setAnimationLevel] = useState<'LOW'|'MEDIUM'|'HIGH'>('MEDIUM');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechEnabled, setSpeechEnabledState] = useState(() => {
@@ -33,6 +35,7 @@ function App() {
   
   const [actionToasts, setActionToasts] = useState<{id: number, text: string}[]>([]);
   const [confirmRequest, setConfirmRequest] = useState<{executionId: string, details: any} | null>(null);
+  const [voiceProb, setVoiceProb] = useState<number>(0);
 
   const historyEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +45,8 @@ function App() {
 
   useEffect(() => {
     document.body.setAttribute('data-animation', animationLevel.toLowerCase());
-  }, [animationLevel]);
+    document.body.setAttribute('data-theme', theme.toLowerCase());
+  }, [animationLevel, theme]);
 
   // Audio level simulation for the 3D core
   const [audioLevel, setAudioLevel] = useState(0);
@@ -93,12 +97,25 @@ function App() {
 
   // Loading Sequence
   useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+      }
+      if (e.key === 'Escape') {
+        setShowCommandPalette(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+
     if (mode === 'INITIALIZING') {
       const timer = setTimeout(() => {
         setMode('CORE');
       }, 1500); // Short animation
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); window.removeEventListener('keydown', handleGlobalKeyDown); };
     }
+    
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [mode]);
 
   useEffect(() => {
@@ -207,8 +224,26 @@ function App() {
         const text = msg.payload.text;
         const utterance = new SpeechSynthesisUtterance(text);
         
+        let speechText = text;
+        if (speechText.includes('[SERIOUS]')) {
+            utterance.rate = 0.8;
+            utterance.pitch = 0.8;
+            speechText = speechText.replace(/\[SERIOUS\]/g, '');
+        } else if (speechText.includes('[FAST]')) {
+            utterance.rate = 1.3;
+            utterance.pitch = 1.1;
+            speechText = speechText.replace(/\[FAST\]/g, '');
+        } else if (speechText.includes('[EXCITED]')) {
+            utterance.rate = 1.2;
+            utterance.pitch = 1.3;
+            speechText = speechText.replace(/\[EXCITED\]/g, '');
+        } else {
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+        }
+
         // Strip out formatting/code blocks for speech so it reads nicely
-        utterance.text = text.replace(/```[\s\S]*?```/g, "Code block omitted.")
+        utterance.text = speechText.replace(/```[\s\S]*?```/g, "Code block omitted.")
                              .replace(/[*_#`]/g, "");
 
         utterance.onstart = () => setIsSpeaking(true);
@@ -230,12 +265,17 @@ function App() {
       }
     });
 
+    const unsubscribeProb = voiceActivationService.onProbability((prob) => {
+      setVoiceProb(prob);
+    });
+
     voiceActivationService.initialize();
 
     return () => {
       unsubscribeStatus();
       unsubscribeMessage();
       unsubscribeVoice();
+      unsubscribeProb();
       wsService.disconnect();
       voiceActivationService.destroy();
     };
@@ -404,7 +444,20 @@ function App() {
             </div>
 
             <div style={{ marginTop: '60px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-               <CommandBar onSend={handleSendText} disabled={wsStatus !== 'connected'} speechEnabled={speechEnabled} onToggleSpeech={handleToggleSpeech} />
+               <CommandBar 
+                 onSend={handleSendText} 
+                 disabled={wsStatus !== 'connected' && coreState !== 'RESPONDING'} 
+                 speechEnabled={speechEnabled} 
+                 onToggleSpeech={handleToggleSpeech} 
+                 isGenerating={coreState !== 'IDLE'}
+                 onInterrupt={() => {
+                     window.speechSynthesis.cancel();
+                     setIsSpeaking(false);
+                     wsService.send({ type: 'interrupt', payload: {} });
+                     setCoreState('IDLE');
+                 }}
+                 voiceProb={voiceProb}
+               />
             </div>
           </div>
         )}
@@ -413,7 +466,20 @@ function App() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <IntelligenceCore state={coreState} details={coreDetails} size={150} isSpeaking={isSpeaking} audioLevel={audioLevel} />
             <div style={{ marginTop: '60px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-               <CommandBar onSend={handleSendText} disabled={wsStatus !== 'connected'} speechEnabled={speechEnabled} onToggleSpeech={handleToggleSpeech} />
+               <CommandBar 
+                 onSend={handleSendText} 
+                 disabled={wsStatus !== 'connected' && coreState !== 'RESPONDING'} 
+                 speechEnabled={speechEnabled} 
+                 onToggleSpeech={handleToggleSpeech} 
+                 isGenerating={coreState !== 'IDLE'}
+                 onInterrupt={() => {
+                     window.speechSynthesis.cancel();
+                     setIsSpeaking(false);
+                     wsService.send({ type: 'interrupt', payload: {} });
+                     setCoreState('IDLE');
+                 }}
+                 voiceProb={voiceProb}
+               />
             </div>
           </div>
         )}
@@ -486,14 +552,62 @@ function App() {
             )}
 
             <div style={{ paddingBottom: '20px' }}>
-              <CommandBar onSend={handleSendText} disabled={wsStatus !== 'connected'} speechEnabled={speechEnabled} onToggleSpeech={handleToggleSpeech} />
+              <CommandBar 
+                 onSend={handleSendText} 
+                 disabled={wsStatus !== 'connected' && coreState !== 'RESPONDING'} 
+                 speechEnabled={speechEnabled} 
+                 onToggleSpeech={handleToggleSpeech} 
+                 isGenerating={coreState !== 'IDLE'}
+                 onInterrupt={() => {
+                     window.speechSynthesis.cancel();
+                     setIsSpeaking(false);
+                     wsService.send({ type: 'interrupt', payload: {} });
+                     setCoreState('IDLE');
+                 }}
+                 voiceProb={voiceProb}
+              />
             </div>
           </div>
         )}
 
       </div>
 
-      {isSettingsOpen && <SidePanel onClose={() => setIsSettingsOpen(false)} animationLevel={animationLevel} setAnimationLevel={setAnimationLevel} speechEnabled={speechEnabled} setSpeechEnabled={setSpeechEnabled} simulateTtsFailure={simulateTtsFailure} setSimulateTtsFailure={setSimulateTtsFailure} />}
+      {isSettingsOpen && <SidePanel onClose={() => setIsSettingsOpen(false)} animationLevel={animationLevel} setAnimationLevel={setAnimationLevel} speechEnabled={speechEnabled} setSpeechEnabled={setSpeechEnabled} simulateTtsFailure={simulateTtsFailure} setSimulateTtsFailure={setSimulateTtsFailure} theme={theme} setTheme={setTheme} />}
+
+      {showCommandPalette && (
+        <div style={{
+          position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', border: '1px solid var(--border-subtle)',
+          padding: '20px', borderRadius: '12px', zIndex: 1000, width: '400px', display: 'flex', flexDirection: 'column', gap: '10px'
+        }}>
+           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Jump to...</div>
+           {['CORE', 'FOCUS', 'KNOWLEDGE', 'CONVERSATION'].map(m => (
+             <button 
+               key={m}
+               onClick={() => { setMode(m as any); setShowCommandPalette(false); }}
+               style={{
+                 background: mode === m ? 'var(--core-active)' : 'rgba(255,255,255,0.05)',
+                 color: mode === m ? '#000' : 'var(--text-main)',
+                 border: 'none', padding: '12px 15px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
+                 fontWeight: 'bold', display: 'flex', justifyContent: 'space-between'
+               }}
+             >
+               {m} {mode === m && '✓'}
+             </button>
+           ))}
+           <button 
+               onClick={() => { setIsSettingsOpen(true); setShowCommandPalette(false); }}
+               style={{
+                 background: 'rgba(255,255,255,0.05)',
+                 color: 'var(--text-main)',
+                 border: 'none', padding: '12px 15px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
+                 fontWeight: 'bold'
+               }}
+             >
+               SETTINGS
+           </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ export class VoiceActivationService {
   private currentRequestId: string = '';
   private stateListeners: Set<(state: VoiceState) => void> = new Set();
   private userSpeechListeners: Set<(text: string) => void> = new Set();
+  private probabilityListeners: Set<(prob: number) => void> = new Set();
   private wsUnsubscribe: (() => void) | null = null;
 
   constructor() {
@@ -43,6 +44,12 @@ export class VoiceActivationService {
     this.vadEngine.onSpeechStart(() => {
        // Optional: Could indicate "Hearing something..." but keeping UI stable is better
     });
+
+    if (this.vadEngine.onProbability) {
+       this.vadEngine.onProbability((prob: number) => {
+           this.probabilityListeners.forEach(listener => listener(prob));
+       });
+    }
 
     this.vadEngine.onSpeechEnd(async (audioBuffer) => {
       // Pause VAD while Whisper runs so we don't queue multiple recordings
@@ -177,6 +184,11 @@ export class VoiceActivationService {
   public onUserSpeech(callback: (text: string) => void) {
     this.userSpeechListeners.add(callback);
     return () => this.userSpeechListeners.delete(callback);
+  }
+
+  public onProbability(callback: (prob: number) => void) {
+    this.probabilityListeners.add(callback);
+    return () => this.probabilityListeners.delete(callback);
   }
 
   private transitionTo(newState: VoiceState) {

@@ -7,26 +7,19 @@ interface Props {
   intentHint?: string;
   speechEnabled?: boolean;
   onToggleSpeech?: () => void;
+  isGenerating?: boolean;
+  onInterrupt?: () => void;
+  voiceProb?: number;
 }
 
-export const CommandBar: React.FC<Props> = ({ onSend, disabled, intentHint, speechEnabled, onToggleSpeech }) => {
+export const CommandBar: React.FC<Props> = ({ onSend, disabled, intentHint, speechEnabled, onToggleSpeech, isGenerating, onInterrupt, voiceProb = 0 }) => {
   const [input, setInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [attachments, setAttachments] = useState<{name: string, mimeType: string, data: string}[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut Ctrl+K
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+
 
   const handleSend = () => {
     if ((!input.trim() && attachments.length === 0) || disabled) return;
@@ -117,6 +110,18 @@ export const CommandBar: React.FC<Props> = ({ onSend, disabled, intentHint, spee
           style={{ resize: 'none', overflowY: 'auto' }}
         />
 
+        {/* Ambient Voice Probability Meter */}
+        <div style={{ width: '40px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+           <div style={{ 
+               width: '8px', 
+               height: '8px', 
+               borderRadius: '50%', 
+               background: voiceProb > 0.8 ? '#00ff00' : voiceProb > 0.3 ? '#ffff00' : '#444',
+               boxShadow: voiceProb > 0.3 ? `0 0 ${voiceProb * 10}px ${voiceProb > 0.8 ? '#00ff00' : '#ffff00'}` : 'none',
+               transition: 'all 0.1s'
+           }} title={`Voice Activity Probability: ${Math.round(voiceProb * 100)}%`} />
+        </div>
+
         {onToggleSpeech && (
           <button 
             className="speech-toggle-btn" 
@@ -158,16 +163,29 @@ export const CommandBar: React.FC<Props> = ({ onSend, disabled, intentHint, spee
           </button>
         )}
 
-        <button 
-          className="send-btn" 
-          onClick={handleSend}
-          disabled={(!input.trim() && attachments.length === 0) || disabled}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
+        {isGenerating && onInterrupt ? (
+          <button 
+            className="send-btn" 
+            onClick={(e) => { e.preventDefault(); onInterrupt(); }}
+            style={{ color: '#ff4444' }}
+            title="Interrupt ARVON"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+              <rect x="6" y="6" width="12" height="12"></rect>
+            </svg>
+          </button>
+        ) : (
+          <button 
+            className="send-btn" 
+            onClick={handleSend}
+            disabled={(!input.trim() && attachments.length === 0) || disabled}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className={`command-suggestions ${!input ? 'visible' : ''}`}>

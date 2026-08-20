@@ -30,6 +30,44 @@
   --ease-linear: linear;
 }
 
+[data-theme="light"] {
+  --bg-dark: #f0f0f2;
+  --bg-surface: rgba(230, 230, 235, 0.7);
+  --bg-surface-hover: rgba(220, 220, 225, 0.8);
+  --bg-panel: rgba(240, 240, 245, 0.85);
+  
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-highlight: rgba(0, 0, 0, 0.2);
+  
+  --text-main: #0a0a0c;
+  --text-dim: #60606a;
+  
+  --core-idle: rgba(100, 100, 200, 0.4);
+  --core-active: rgba(50, 100, 200, 0.8);
+  --core-analyzing: rgba(150, 50, 200, 0.8);
+  --core-tool: rgba(50, 200, 150, 0.8);
+  --core-responding: rgba(50, 50, 50, 0.9);
+}
+
+[data-theme="whisper"] {
+  --bg-dark: #050505;
+  --bg-surface: rgba(10, 10, 10, 0.5);
+  --bg-surface-hover: rgba(15, 15, 15, 0.6);
+  --bg-panel: rgba(8, 8, 8, 0.9);
+  
+  --border-subtle: rgba(255, 255, 255, 0.02);
+  --border-highlight: rgba(255, 255, 255, 0.05);
+  
+  --text-main: #555555;
+  --text-dim: #333333;
+  
+  --core-idle: rgba(50, 50, 80, 0.2);
+  --core-active: rgba(40, 50, 80, 0.4);
+  --core-analyzing: rgba(80, 40, 80, 0.4);
+  --core-tool: rgba(40, 80, 60, 0.4);
+  --core-responding: rgba(80, 80, 80, 0.5);
+}
+
 /* Reduced Motion Settings */
 [data-animation="low"] {
   --duration-micro: 0ms;

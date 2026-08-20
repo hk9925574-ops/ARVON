@@ -8,6 +8,7 @@ export class VoiceActivityService implements IVoiceActivityService {
   private speechStartCallback: (() => void) | null = null;
   private speechEndCallback: ((audioBuffer: Float32Array) => void) | null = null;
   private errorCallback: ((error: Error) => void) | null = null;
+  private probabilityCallback: ((prob: number) => void) | null = null;
 
   public async start(stream?: MediaStream): Promise<void> {
     if (this.isEngineRunning) return;
@@ -41,6 +42,12 @@ export class VoiceActivityService implements IVoiceActivityService {
           console.log('[VAD] Speech ended');
           if (this.speechEndCallback) {
             this.speechEndCallback(audio);
+          }
+        },
+        onFrameProcessed: (probabilities: any) => {
+          if (this.isPaused) return;
+          if (this.probabilityCallback && probabilities && probabilities.isSpeech !== undefined) {
+             this.probabilityCallback(probabilities.isSpeech);
           }
         }
       });
@@ -85,5 +92,9 @@ export class VoiceActivityService implements IVoiceActivityService {
 
   public onError(callback: (error: Error) => void): void {
     this.errorCallback = callback;
+  }
+
+  public onProbability(callback: (prob: number) => void): void {
+    this.probabilityCallback = callback;
   }
 }

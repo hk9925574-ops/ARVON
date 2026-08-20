@@ -9,6 +9,8 @@ interface Props {
   setSpeechEnabled: (val: boolean) => void;
   simulateTtsFailure: boolean;
   setSimulateTtsFailure: (val: boolean) => void;
+  theme?: 'DARK'|'LIGHT'|'WHISPER';
+  setTheme?: (t: 'DARK'|'LIGHT'|'WHISPER') => void;
 }
 
 type Tab = 'CONVERSATIONS' | 'MEMORY' | 'AGENTS' | 'TERMINAL' | 'TOOLS' | 'KNOWLEDGE' | 'SETTINGS';
@@ -20,7 +22,9 @@ export const SidePanel: React.FC<Props> = ({
   speechEnabled,
   setSpeechEnabled,
   simulateTtsFailure,
-  setSimulateTtsFailure
+  setSimulateTtsFailure,
+  theme,
+  setTheme
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('SETTINGS');
   const [memories, setMemories] = useState<any[]>([]);
@@ -210,6 +214,15 @@ export const SidePanel: React.FC<Props> = ({
 
         {activeTab === 'SETTINGS' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>UI Theme</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setTheme?.('DARK')} style={{ flex: 1, padding: '8px', background: theme === 'DARK' ? 'var(--core-active)' : 'transparent', color: theme === 'DARK' ? '#000' : 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>DARK</button>
+                <button onClick={() => setTheme?.('LIGHT')} style={{ flex: 1, padding: '8px', background: theme === 'LIGHT' ? 'var(--core-active)' : 'transparent', color: theme === 'LIGHT' ? '#000' : 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>LIGHT</button>
+                <button onClick={() => setTheme?.('WHISPER')} style={{ flex: 1, padding: '8px', background: theme === 'WHISPER' ? 'var(--core-active)' : 'transparent', color: theme === 'WHISPER' ? '#000' : 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>WHISPER</button>
+              </div>
+            </div>
+
             <div>
               <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Animation Level</div>
               <div style={{ display: 'flex', gap: '10px' }}>

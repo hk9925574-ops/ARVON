@@ -27,6 +27,7 @@ export interface IVoiceActivityService {
   onSpeechStart(callback: () => void): void;
   onSpeechEnd(callback: (audioBuffer: Float32Array) => void): void;
   onError(callback: (error: Error) => void): void;
+  onProbability?(callback: (prob: number) => void): void;
 }
 
 export interface IVoiceOutputService {

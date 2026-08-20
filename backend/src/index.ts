@@ -27,8 +27,8 @@ import { ReadFSTool, WriteWorkspaceTool, ModifySystemTool, UndoTool } from './se
 import { CaptureScreenTool, ScreenDiffTool, OCRTool } from './services/tools/providers/VisionTools';
 import { NavigateBrowserTool, ReadPageTool, CloseBrowserTool } from './services/tools/providers/BrowserTools';
 import { SaveMemoryTool, SearchMemoryTool, IngestKnowledgeBaseTool } from './services/tools/providers/MemoryTools';
-import { SpawnResearchAgentTool, SpawnCoderAgentTool, EndAgentTaskTool } from './services/tools/providers/AgentTools';
 import { ScheduleTaskTool } from './services/tools/providers/SchedulerTools';
+import { SpawnResearchAgentTool, SpawnCoderAgentTool, EndAgentTaskTool } from './services/tools/providers/AgentTools';
 import { CreateToolTool } from './services/tools/providers/CustomToolGenerator';
 import { VectorDatabase } from './services/memory/VectorDatabase';
 import { WorkspaceIndexer } from './services/memory/WorkspaceIndexer';
@@ -137,6 +137,7 @@ toolRegistry.register(new ScreenDiffTool());
 toolRegistry.register(new OCRTool());
 toolRegistry.register(new GitContextTool());
 toolRegistry.register(new ReadClipboardTool());
+toolRegistry.register(new ScheduleTaskTool(toolRegistry));
 
 // Register Browser Tools
 toolRegistry.register(new NavigateBrowserTool());
