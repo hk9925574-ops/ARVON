@@ -71,3 +71,37 @@ export class SearchMemoryTool implements ITool {
   }
 }
 
+import { WorkspaceIndexer } from '../../memory/WorkspaceIndexer';
+
+export class IngestKnowledgeBaseTool implements ITool {
+  name = 'IngestKnowledgeBaseTool';
+  description = 'Recursively reads a directory of files (markdown, text, etc.), chunks them, and ingests them into the Vector Database. Use this to bulk-ingest personal knowledge bases or documentation.';
+  permissionTier: 1 | 2 | 3 = 2; // Medium risk since it reads many files and spends compute
+
+  inputSchema = {
+    type: 'object',
+    properties: {
+        directoryPath: { type: 'string', description: 'The absolute path to the directory to ingest.' }
+    },
+    required: ['directoryPath']
+  };
+
+  constructor(private vectorDb: VectorDatabase, private aiProvider: IAIProvider) {}
+
+  async execute(args: any, config: ToolConfig): Promise<any> {
+    if (!this.aiProvider.generateEmbeddings) {
+      return { success: false, error: 'Current AI Provider does not support embeddings.' };
+    }
+    
+    // We can reuse the WorkspaceIndexer logic for this directory
+    // Casting aiProvider to any since WorkspaceIndexer expects GeminiAIProvider strictly in its constructor (legacy)
+    const indexer = new WorkspaceIndexer(args.directoryPath, this.vectorDb, this.aiProvider as any);
+    
+    try {
+        await indexer.startIndexing();
+        return { success: true, message: `Successfully scanned and ingested directory: ${args.directoryPath}` };
+    } catch (e: any) {
+        return { success: false, error: `Failed to ingest: ${e.message}` };
+    }
+  }
+}

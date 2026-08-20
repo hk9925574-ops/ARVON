@@ -25,7 +25,7 @@ import { CalculatorTool, OpenApplicationTool, OpenWebsiteTool, RunCommandTool } 
 import { ReadFSTool, WriteWorkspaceTool, ModifySystemTool } from './services/tools/providers/FSTools';
 import { CaptureScreenTool } from './services/tools/providers/VisionTools';
 import { NavigateBrowserTool, ReadPageTool, CloseBrowserTool } from './services/tools/providers/BrowserTools';
-import { SaveMemoryTool, SearchMemoryTool } from './services/tools/providers/MemoryTools';
+import { SaveMemoryTool, SearchMemoryTool, IngestKnowledgeBaseTool } from './services/tools/providers/MemoryTools';
 import { SpawnResearchAgentTool, SpawnCoderAgentTool, EndAgentTaskTool } from './services/tools/providers/AgentTools';
 import { ScheduleTaskTool } from './services/tools/providers/SchedulerTools';
 import { CreateToolTool } from './services/tools/providers/CustomToolGenerator';
@@ -140,6 +140,7 @@ toolRegistry.register(new CloseBrowserTool());
 const vectorDb = new VectorDatabase(path.join(__dirname, '../../vector_db.json'));
 toolRegistry.register(new SaveMemoryTool(vectorDb, aiService as any));
 toolRegistry.register(new SearchMemoryTool(vectorDb, aiService as any));
+toolRegistry.register(new IngestKnowledgeBaseTool(vectorDb, aiService as any));
 
 // Background RAG Indexer
 const workspaceIndexer = new WorkspaceIndexer(toolConfig.workspacePath, vectorDb, aiService as any);

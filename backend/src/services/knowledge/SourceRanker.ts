@@ -50,6 +50,21 @@ export class SourceRanker {
     // Sort by score descending
     scoredResults.sort((a, b) => b.score - a.score);
 
+    // Basic date discrepancy detection to alert the LLM
+    const yearsInSnippets = new Set<string>();
+    scoredResults.forEach(sr => {
+       const match = sr.result.snippet.match(/\b(202[0-9])\b/);
+       if (match) yearsInSnippets.add(match[1]);
+       if (sr.result.publishedAt) {
+           const pubMatch = sr.result.publishedAt.match(/\b(202[0-9])\b/);
+           if (pubMatch) yearsInSnippets.add(pubMatch[1]);
+       }
+    });
+    
+    if (yearsInSnippets.size > 1 && scoredResults.length > 0) {
+       scoredResults[0].result.snippet = `[SYSTEM_WARNING: CONFLICTING TIMELINES DETECTED ACROSS SOURCES. YOU MUST EXPLICITLY MENTION THIS DISCREPANCY IN YOUR RESPONSE.]\n` + scoredResults[0].result.snippet;
+    }
+
     return scoredResults.map(sr => sr.result);
   }
 }

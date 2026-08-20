@@ -422,6 +422,33 @@ Keep this terse — bullet points, not prose. This is scratch work, not the fina
         console.log(`[PERF] tts_complete: ${Date.now() - context.t0}ms`);
         console.log(`[REQ-${context.reqId}][SPEECH] result:`, result);
     });
+
+    // 9. Auto-Conversation Summarization (Background)
+    this.extractBackgroundMemories(text, responseText).catch(e => console.warn('[MEM] Background extraction failed:', e.message));
+  }
+
+  private async extractBackgroundMemories(userText: string, aiText: string) {
+    if (userText.length < 10) return;
+    
+    try {
+        const prompt = `You are a background memory extractor. Analyze the following exchange and extract exactly ONE or ZERO important facts about the user or their preferences that should be saved long-term. Do not extract temporary status or trivial chat.
+User: ${userText}
+AI: ${aiText}
+
+If there is a core fact to save (e.g. "User lives in New York", "User prefers Python"), output ONLY a JSON object: {"fact": "The fact to save"}. If nothing is worth saving, output {"fact": null}.`;
+
+        const extraction = await this.aiProvider.generateResponse([{ role: 'user', content: prompt }], { temperature: 0.1 });
+        const jsonMatch = extraction.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.fact) {
+                console.log(`[MEM] Auto-extracted fact: ${parsed.fact}`);
+                await this.toolRegistry.executeTool('SaveMemoryTool', { text: parsed.fact, category: 'auto_extracted' }, () => {}, () => {});
+            }
+        }
+    } catch (e) {
+        // silently fail for background task
+    }
   }
 
   private sendState(context: OrchestratorContext, state: string, details: string) {

@@ -7,6 +7,8 @@ export interface VectorRecord {
     vector: number[];
     metadata: any;
     timestamp: number;
+    accessCount?: number;
+    lastAccessedAt?: number;
 }
 
 export class VectorDatabase {
@@ -42,7 +44,9 @@ export class VectorDatabase {
         const fullRecord: VectorRecord = {
             ...record,
             id: Math.random().toString(36).substring(2, 15),
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            accessCount: 0,
+            lastAccessedAt: Date.now()
         };
         this.records.push(fullRecord);
         this.save();
@@ -64,13 +68,31 @@ export class VectorDatabase {
     }
 
     public search(queryVector: number[], limit: number = 5): VectorRecord[] {
-        const scored = this.records.map(record => ({
-            record,
-            score: this.cosineSimilarity(queryVector, record.vector)
-        }));
+        const scored = this.records.map(record => {
+            const baseScore = this.cosineSimilarity(queryVector, record.vector);
+            const accesses = record.accessCount || 0;
+            const daysOld = (Date.now() - record.timestamp) / (1000 * 60 * 60 * 24);
+            const decay = Math.max(0.5, 1 - (daysOld * 0.01)); // Slow decay up to 50%
+            const promotion = Math.min(1.5, 1 + (accesses * 0.05)); // Boost up to 1.5x for highly used memories
+            
+            return {
+                record,
+                score: baseScore * decay * promotion
+            };
+        });
         
         scored.sort((a, b) => b.score - a.score);
-        return scored.slice(0, limit).map(s => s.record);
+        const results = scored.slice(0, limit).map(s => s.record);
+
+        let mutated = false;
+        results.forEach(r => {
+            r.accessCount = (r.accessCount || 0) + 1;
+            r.lastAccessedAt = Date.now();
+            mutated = true;
+        });
+        if (mutated) this.save();
+
+        return results;
     }
 
     public delete(id: string) {

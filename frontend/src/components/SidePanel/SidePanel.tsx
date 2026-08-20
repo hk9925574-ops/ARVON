@@ -97,18 +97,52 @@ export const SidePanel: React.FC<Props> = ({
 
         {activeTab === 'MEMORY' && (
           <div>
+            <div style={{ marginBottom: '20px', padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Add Manual Memory</div>
+              <input 
+                type="text" 
+                id="memText"
+                placeholder="Fact to remember..." 
+                style={{ width: '100%', padding: '8px', marginBottom: '10px', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }} 
+              />
+              <input 
+                type="text" 
+                id="memCategory"
+                placeholder="Category (e.g. personal)" 
+                style={{ width: '100%', padding: '8px', marginBottom: '10px', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }} 
+              />
+              <button 
+                onClick={() => {
+                  const text = (document.getElementById('memText') as HTMLInputElement).value;
+                  const category = (document.getElementById('memCategory') as HTMLInputElement).value || 'general';
+                  if (text) {
+                     // Since WS doesn't have an add_vector_memory, we send a direct tool call request or we can just send it as text
+                     wsService.send({ type: 'text_request', payload: { text: `Remember this exactly: ${text}. Tag it as ${category}.` } });
+                     (document.getElementById('memText') as HTMLInputElement).value = '';
+                     setTimeout(() => wsService.send({ type: 'get_vector_memories', payload: {} }), 2000);
+                  }
+                }}
+                style={{ width: '100%', padding: '8px', background: 'var(--core-active)', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                Save Memory
+              </button>
+            </div>
+
             {memories.length === 0 ? (
               <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '15px' }}>No active memories.</div>
             ) : (
               memories.map((m, i) => (
                 <div key={i} style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.9rem', marginBottom: '15px' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{m.text}</div>
-                  <div style={{ color: 'var(--text-dim)' }}>[{m.metadata?.category || 'general'}] {new Date(m.timestamp).toLocaleDateString()}</div>
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                    <span style={{ color: 'var(--core-active)' }}>[{m.metadata?.category || 'general'}]</span> • {new Date(m.timestamp).toLocaleDateString()}
+                    <br/>Accessed {m.accessCount || 0} times
+                  </div>
                   <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
                     <button 
                       onClick={() => wsService.send({ type: 'forget_vector_memory', payload: { id: m.id } })}
-                      style={{ color: 'var(--text-dim)' }}
-                    >Forget</button>
+                      style={{ color: '#ff6b6b', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >Delete</button>
                   </div>
                 </div>
               ))
