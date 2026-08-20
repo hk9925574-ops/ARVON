@@ -1,6 +1,6 @@
 import { ITool, ToolConfig } from '../ToolRegistry';
 import { VectorDatabase } from '../../memory/VectorDatabase';
-import { GeminiAIProvider } from '../../ai/GeminiAIProvider';
+import { IAIProvider } from '../../ai/AIProvider';
 
 export class SaveMemoryTool implements ITool {
   name = 'SaveMemoryTool';
@@ -16,9 +16,12 @@ export class SaveMemoryTool implements ITool {
     required: ['text']
   };
 
-  constructor(private vectorDb: VectorDatabase, private aiProvider: GeminiAIProvider) {}
+  constructor(private vectorDb: VectorDatabase, private aiProvider: IAIProvider) {}
 
   async execute(args: any, config: ToolConfig): Promise<any> {
+    if (!this.aiProvider.generateEmbeddings) {
+      return { success: false, error: 'Current AI Provider does not support embeddings. Ensure Ollama is running and "ollama pull nomic-embed-text" is downloaded.' };
+    }
     const vector = await this.aiProvider.generateEmbeddings(args.text);
     if (!vector || vector.length === 0) {
         return { success: false, error: 'Failed to generate embeddings' };
@@ -48,9 +51,12 @@ export class SearchMemoryTool implements ITool {
     required: ['query']
   };
 
-  constructor(private vectorDb: VectorDatabase, private aiProvider: GeminiAIProvider) {}
+  constructor(private vectorDb: VectorDatabase, private aiProvider: IAIProvider) {}
 
   async execute(args: any, config: ToolConfig): Promise<any> {
+    if (!this.aiProvider.generateEmbeddings) {
+      return { success: false, error: 'Current AI Provider does not support embeddings. Ensure Ollama is running and "ollama pull nomic-embed-text" is downloaded.' };
+    }
     const vector = await this.aiProvider.generateEmbeddings(args.query);
     if (!vector || vector.length === 0) {
         return { success: false, error: 'Failed to generate embeddings for query' };
@@ -64,3 +70,4 @@ export class SearchMemoryTool implements ITool {
     };
   }
 }
+

@@ -26,4 +26,5 @@ export interface IAIProvider {
     options?: AIOptions
   ): AsyncIterable<string>;
   healthCheck?(): Promise<boolean>;
+  generateEmbeddings?(text: string): Promise<number[]>;
 }

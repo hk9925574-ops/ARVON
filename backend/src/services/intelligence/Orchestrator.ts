@@ -17,7 +17,8 @@ import { SourceRanker } from '../knowledge/SourceRanker';
 import { WebKnowledgeProvider, SystemKnowledgeProvider } from '../knowledge/KnowledgeEngine';
 import { SportsKnowledgeProvider } from '../knowledge/providers/SportsKnowledgeProvider';
 import { NewsKnowledgeProvider } from '../knowledge/providers/NewsKnowledgeProvider';
-
+import { SaveMemoryTool, SearchMemoryTool } from '../tools/providers/MemoryTools';
+import { VectorDatabase } from '../memory/VectorDatabase';
 import { PerformanceTracker } from './PerformanceTracker';
 import { FastIntentRouter } from './FastIntentRouter';
 
@@ -106,6 +107,10 @@ ${verifyData}`;
     this.toolRegistry.register(new OpenApplicationTool());
     this.toolRegistry.register(new SystemInfoTool());
     this.toolRegistry.register(new TimeTool());
+
+    const vectorDb = new VectorDatabase(require('path').join(process.cwd(), 'vector_db.json'));
+    this.toolRegistry.register(new SaveMemoryTool(vectorDb, this.aiProvider));
+    this.toolRegistry.register(new SearchMemoryTool(vectorDb, this.aiProvider));
 
     // Register Knowledge Providers
     const queryGen = new SearchQueryGenerator(this.aiProvider);
