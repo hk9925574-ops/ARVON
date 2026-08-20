@@ -1,5 +1,29 @@
 import { IAIProvider, ConversationMessage, AIOptions } from './AIProvider';
 
+export class GroqUsageTracker {
+  public static tokensRemainingToday: number = -1;
+  public static requestsRemainingToday: number = -1;
+  
+  static updateFromHeaders(headers: Headers) {
+      const remTokens = headers.get('x-ratelimit-remaining-tokens-today');
+      const remReqs = headers.get('x-ratelimit-remaining-requests-today');
+      
+      let updated = false;
+      if (remTokens) {
+        this.tokensRemainingToday = parseInt(remTokens, 10);
+        updated = true;
+      }
+      if (remReqs) {
+        this.requestsRemainingToday = parseInt(remReqs, 10);
+        updated = true;
+      }
+      
+      if (updated) {
+          console.log(`[QUOTA] Groq limits remaining today: ${this.requestsRemainingToday} reqs, ${this.tokensRemainingToday} tokens`);
+      }
+  }
+}
+
 export class GroqAIProvider implements IAIProvider {
   private groqApiKey = process.env.GROQ_API_KEY || '';
   private groqBaseUrl = 'https://api.groq.com/openai/v1/chat/completions';
@@ -71,29 +95,7 @@ export class GroqAIProvider implements IAIProvider {
     }).filter(Boolean);
   }
 
-export class GroqUsageTracker {
-  public static tokensRemainingToday: number = -1;
-  public static requestsRemainingToday: number = -1;
-  
-  static updateFromHeaders(headers: Headers) {
-      const remTokens = headers.get('x-ratelimit-remaining-tokens-today');
-      const remReqs = headers.get('x-ratelimit-remaining-requests-today');
-      
-      let updated = false;
-      if (remTokens) {
-        this.tokensRemainingToday = parseInt(remTokens, 10);
-        updated = true;
-      }
-      if (remReqs) {
-        this.requestsRemainingToday = parseInt(remReqs, 10);
-        updated = true;
-      }
-      
-      if (updated) {
-          console.log(`[QUOTA] Groq limits remaining today: ${this.requestsRemainingToday} reqs, ${this.tokensRemainingToday} tokens`);
-      }
-  }
-}
+
 
   private async executeWithFailover(requestBody: any): Promise<Response> {
     try {
