@@ -381,9 +381,11 @@ Keep this terse — bullet points, not prose. This is scratch work, not the fina
     } catch (e: any) {
         console.error('[ARVON] AI Provider Error:', e);
         const errorMsg = (e.message || '').toLowerCase();
-        let fallbackText = "I'm sorry, my cloud intelligence provider is completely unresponsive right now. Please try again in a moment.";
-        if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('overloaded')) {
-            fallbackText = "I apologize, but the Gemini Cloud API is currently experiencing extreme high demand and rejecting requests. Please wait a minute and try again.";
+        let fallbackText = `I encountered a core system failure while generating a response. Detail: ${e.message}`;
+        if (errorMsg.includes('503') || errorMsg.includes('overloaded') || errorMsg.includes('rate limit')) {
+            fallbackText = "Both my primary Groq cloud provider and local Ollama failover are currently unavailable or rate-limited. Please verify system connectivity or try again in a moment.";
+        } else if (errorMsg.includes('fetch failed') || errorMsg.includes('econnrefused')) {
+            fallbackText = "I lost connection to my intelligence providers. Please ensure your network is active and local Ollama is running if you are relying on failovers.";
         }
 
         this.historyManager.addMessage('assistant', fallbackText);

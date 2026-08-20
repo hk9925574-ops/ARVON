@@ -9,7 +9,7 @@ import {
 } from '../../shared/types';
 import { LocalAIProvider } from './services/ai/LocalAIProvider';
 import { GeminiAIProvider } from './services/ai/GeminiAIProvider';
-import { GroqAIProvider } from './services/ai/GroqAIProvider';
+import { GroqAIProvider, GroqUsageTracker } from './services/ai/GroqAIProvider';
 import { PiperTTS } from './services/voice/PiperTTS';
 import { MemoryManager } from './services/memory/MemoryManager';
 import { ConversationManager } from './services/conversation/ConversationManager';
@@ -37,8 +37,63 @@ import * as path from 'path';
 // Load environment variables
 dotenv.config();
 
+import * as http from 'http';
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
-const wss = new WebSocket.Server({ port: PORT });
+
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url === '/api/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    
+    // Check Groq
+    let groqStatus = 'offline';
+    try {
+      const groqRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` }
+      });
+      if (groqRes.ok) groqStatus = 'online';
+    } catch(e) {}
+
+    // Check Ollama
+    let ollamaStatus = 'offline';
+    try {
+      const ollamaRes = await fetch('http://127.0.0.1:11434/api/tags');
+      if (ollamaRes.ok) ollamaStatus = 'online';
+    } catch(e) {}
+
+    // Check Tavily
+    let tavilyStatus = 'offline';
+    try {
+      const tavilyRes = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: process.env.TAVILY_API_KEY, query: 'test' })
+      });
+      if (tavilyRes.ok || tavilyRes.status === 400) tavilyStatus = 'online'; // 400 means API key valid but bad request
+    } catch(e) {}
+
+    res.end(JSON.stringify({
+      status: 'ok',
+      providers: {
+        groq: groqStatus,
+        ollama: ollamaStatus,
+        tavily: tavilyStatus
+      },
+      usage: {
+        requestsRemainingToday: GroqUsageTracker.requestsRemainingToday,
+        tokensRemainingToday: GroqUsageTracker.tokensRemainingToday
+      }
+    }));
+    return;
+  }
+  
+  res.writeHead(404);
+  res.end();
+});
+
+const wss = new WebSocket.Server({ server });
+server.listen(PORT, () => {
+    console.log(`[ARVON] HTTP & WebSocket server started on port ${PORT}`);
+});
 
 // Initialize Legacy Services (Voice)
 const aiService = process.env.GROQ_API_KEY ? new GroqAIProvider() : process.env.GEMINI_API_KEY ? new GeminiAIProvider() : new LocalAIProvider();
@@ -144,7 +199,6 @@ orchestrator.speechOutputEngine.broadcastAudio = (chunk: Buffer) => {
 };
 
 console.log(`[ARVON] Starting backend...`);
-console.log(`[ARVON] WebSocket server started on port ${PORT}`);
 
 wss.on('connection', (ws: WebSocket) => {
   console.log('[ARVON] Client connected');

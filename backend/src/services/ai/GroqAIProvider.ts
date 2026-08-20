@@ -71,9 +71,63 @@ export class GroqAIProvider implements IAIProvider {
     }).filter(Boolean);
   }
 
+export class GroqUsageTracker {
+  public static tokensRemainingToday: number = -1;
+  public static requestsRemainingToday: number = -1;
+  
+  static updateFromHeaders(headers: Headers) {
+      const remTokens = headers.get('x-ratelimit-remaining-tokens-today');
+      const remReqs = headers.get('x-ratelimit-remaining-requests-today');
+      
+      let updated = false;
+      if (remTokens) {
+        this.tokensRemainingToday = parseInt(remTokens, 10);
+        updated = true;
+      }
+      if (remReqs) {
+        this.requestsRemainingToday = parseInt(remReqs, 10);
+        updated = true;
+      }
+      
+      if (updated) {
+          console.log(`[QUOTA] Groq limits remaining today: ${this.requestsRemainingToday} reqs, ${this.tokensRemainingToday} tokens`);
+      }
+  }
+}
+
+  private async executeWithFailover(requestBody: any): Promise<Response> {
+    try {
+      const response = await fetch(this.groqBaseUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.groqApiKey}`
+        },
+        body: JSON.stringify({ ...requestBody, model: this.defaultModel })
+      });
+      
+      GroqUsageTracker.updateFromHeaders(response.headers);
+
+      if (response.ok || (response.status !== 429 && response.status < 500)) {
+        return response;
+      }
+      console.warn(`[ARVON][LLM] Groq HTTP ${response.status}, triggering failover...`);
+    } catch (e: any) {
+      console.warn(`[ARVON][LLM] Groq connection failed (${e.message}), triggering failover...`);
+    }
+
+    // Failover to Local Ollama
+    console.log('[ARVON][LLM] Routing request to local Ollama fallback (llama3.2)');
+    return fetch('http://127.0.0.1:11434/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...requestBody, model: 'llama3.2' })
+    });
+  }
+
   public async generateResponse(messages: ConversationMessage[], options?: AIOptions): Promise<string> {
     const t0 = performance.now();
-    console.log(`[PERF][LLM] Initiating connection to Groq API (Model: ${this.defaultModel})`);
+    console.log(`[PERF][LLM] Initiating connection to Groq API`);
 
     let currentMessages = [...messages];
     let isFunctionCalling = true;
@@ -86,7 +140,6 @@ export class GroqAIProvider implements IAIProvider {
             const mappedTools = this.mapTools(options?.tools);
 
             const requestBody: any = {
-              model: this.defaultModel,
               messages: mappedMessages,
               temperature: options?.temperature ?? 0.7,
               stream: false
@@ -97,17 +150,10 @@ export class GroqAIProvider implements IAIProvider {
               requestBody.tool_choice = 'auto';
             }
 
-            const response = await fetch(this.groqBaseUrl, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.groqApiKey}`
-              },
-              body: JSON.stringify(requestBody)
-            });
+            const response = await this.executeWithFailover(requestBody);
 
             if (!response.ok) {
-              throw new Error(`Groq HTTP error! status: ${response.status} - ${await response.text()}`);
+              throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
             }
 
             const data = await response.json();
@@ -117,7 +163,7 @@ export class GroqAIProvider implements IAIProvider {
                 const currentFunctionCall = choice.message.tool_calls[0];
                 const callName = currentFunctionCall.function.name;
                 const callArgs = JSON.parse(currentFunctionCall.function.arguments || '{}');
-                console.log(`[ARVON][LLM] Groq invoked tool: ${callName}`);
+                console.log(`[ARVON][LLM] LLM invoked tool: ${callName}`);
                 isFunctionCalling = true;
 
                 currentMessages.push({
@@ -140,26 +186,26 @@ export class GroqAIProvider implements IAIProvider {
                         functionResponse: { name: callName, response: resultObj }
                     }]
                 });
-                console.log(`[ARVON][LLM] Returning tool result to Groq...`);
+                console.log(`[ARVON][LLM] Returning tool result to LLM...`);
             } else {
                 finalResponseText = choice.message.content || "I'm sorry, I couldn't generate a response.";
             }
 
         } catch (error: any) {
-            console.error(`[ARVON][LLM] Groq API Error:`, error);
+            console.error(`[ARVON][LLM] API Error:`, error);
             console.log(`[PERF][LLM] Error after ${Math.round(performance.now() - t0)}ms: ${error.message}`);
-            return "Sorry, I encountered an error communicating with the Groq API.";
+            throw new Error(`AI Provider Failure: ${error.message}`);
         }
     }
 
     const tConnection = performance.now();
-    console.log(`[PERF][LLM] Full response received from Groq in ${Math.round(tConnection - t0)}ms`);
+    console.log(`[PERF][LLM] Full response received in ${Math.round(tConnection - t0)}ms`);
     return finalResponseText;
   }
 
   public async *stream(messages: ConversationMessage[], options?: AIOptions): AsyncIterable<string> {
     const t0 = performance.now();
-    console.log(`[PERF][LLM] Initiating streaming connection to Groq API (${this.defaultModel})`);
+    console.log(`[PERF][LLM] Initiating streaming connection to Groq API`);
 
     let currentMessages = [...messages];
     let isFunctionCalling = true;
@@ -170,7 +216,6 @@ export class GroqAIProvider implements IAIProvider {
         const mappedTools = this.mapTools(options?.tools);
 
         const requestBody: any = {
-          model: this.defaultModel,
           messages: mappedMessages,
           temperature: options?.temperature ?? 0.7,
           stream: true
@@ -183,14 +228,7 @@ export class GroqAIProvider implements IAIProvider {
 
         let response;
         try {
-            response = await fetch(this.groqBaseUrl, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.groqApiKey}`
-              },
-              body: JSON.stringify(requestBody)
-            });
+            response = await this.executeWithFailover(requestBody);
         } catch (e: any) {
             console.log(`[PERF][LLM] Connection failed after ${Math.round(performance.now() - t0)}ms: ${e.message}`);
             throw e;
